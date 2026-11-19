@@ -40,6 +40,7 @@ const SAVE = {
 // ── 상수, 상태, 도우미, 무기, 플레이어, 동료 ──────────────
 const C = typeof document !== 'undefined' ? document.getElementById('c') : null,
   g = C ? C.getContext('2d') : null, W = 480, H = 800, TAU = Math.PI * 2;
+const MAX_HP = 20, MAX_BOMBS = 20;
 const K = {}, STAGES = [], FOES = {};
 let touch = null, lastTap = 0, state = 'title', endAt = 0, godMode = false;
 let P, shots, bul, ene, items, fx, boss, T, score, graze, glory, burst, invert,
@@ -77,8 +78,8 @@ const BOONS = [
   { k: 'ray', n: '빛줄기 +1', d: '곧은 빛줄기가 하나 더 나간다', max: 2, col: '#a8fff0', g: '빛' },
   { k: 'rate', n: '빠른 손', d: '더 빨리 쏜다', max: 2, col: '#9ee4ff', g: '속' },
   { k: 'mag', n: '넓은 품', d: '예물이 더 멀리서 끌려온다', max: 2, col: '#8ef5d8', g: '품' },
-  { k: 'hp', n: '생명 +1', d: '생명 하나를 채운다', ok: () => P.hp < (P.maxHp || 5), col: '#b8ff9e', g: '생' },
-  { k: 'bomb', n: '나팔 +1', d: '천사 강림을 한 번 더', ok: () => P.bombs < 7, col: '#c2d4ff', g: '나팔' },
+  { k: 'hp', n: '생명 +1', d: '생명 하나를 채운다', ok: () => P.hp < (P.maxHp || MAX_HP), col: '#b8ff9e', g: '생' },
+  { k: 'bomb', n: '나팔 +1', d: '천사 강림을 한 번 더', ok: () => P.bombs < MAX_BOMBS, col: '#c2d4ff', g: '나팔' },
   { k: 'glory', n: '영광 +40', d: '할렐루야가 가까워진다', col: '#fff3b8', g: '영광' },
   { k: 'bloom', n: '큰 꽃', d: '씨앗탄이 더 크게 터진다', max: 1, ok: () => day >= 3, col: '#9effb8', g: '꽃' },
   { k: 'sun', n: '밝은 해', d: '해와 달이 더 넓게, 더 세게 돈다', max: 1, ok: () => day >= 4, col: '#ffe29e', g: '해' },
@@ -103,13 +104,13 @@ function addScore(v) {
   if (!v) return;
   score += v;
   while (score >= nextExtend) {
-    const maxHp = (P && P.maxHp) || 5;
+    const maxHp = (P && P.maxHp) || MAX_HP;
     if (P.hp < maxHp) {
       P.hp++;
       shout('생명 +1!', W / 2, 270);
       sfx('potion');
     } else {
-      P.bombs = Math.min(7, P.bombs + 1);
+      P.bombs = Math.min(MAX_BOMBS, P.bombs + 1);
       shout('나팔 +1!', W / 2, 270);
       sfx('power');
     }
@@ -151,7 +152,7 @@ function startStage(idx, keep) {
     resetVisuals();
     combo = 0; comboT = 0; maxCombo = 0; newBest = false;
     score = 0; graze = 0; glory = 0; burst = 0; invert = 0; nextExtend = 50000;
-    P = { x: W / 2, y: H - 120, hp: 3, maxHp: 5, bombs: 3, inv: 0, armor: 0, armorT: 0, clothed: 0, pray: 0, idle: 0, w: 0, lv: 1, pets: [], boon: {}, flood: 0, upT: 0 };
+    P = { x: W / 2, y: H - 120, hp: 3, maxHp: MAX_HP, bombs: 3, inv: 0, armor: 0, armorT: 0, clothed: 0, pray: 0, idle: 0, w: 0, lv: 1, pets: [], boon: {}, flood: 0, upT: 0 };
     stats = { hits: 0, bombs: 0, fruit: 0, perfect: 0, tree: 0, rest: -1, pickups: 0, trumpets: 0 };
   } else {
     P.w = 0; P.lv = 1; P.flood = 0; P.clothed = 0; P.armor = 0; P.armorT = 0; P.pets = [];
@@ -345,8 +346,8 @@ function pick(b, auto) {
   else if (b && b.k) orb = act.find(o => o.b === b) || null;
   if (!b || !b.k) return;
   P.boon[b.k] = (P.boon[b.k] || 0) + 1; P.upT = 20;
-  if (b.k === 'hp') P.hp = Math.min(P.maxHp || 5, P.hp + 1);
-  if (b.k === 'bomb') P.bombs = Math.min(7, P.bombs + 1);
+  if (b.k === 'hp') P.hp = Math.min(P.maxHp || MAX_HP, P.hp + 1);
+  if (b.k === 'bomb') P.bombs = Math.min(MAX_BOMBS, P.bombs + 1);
   if (b.k === 'glory') glory = Math.min(100, glory + 40);
   sfx('power'); shout(auto ? '복이 임했다: ' + b.n : b.n, P.x, P.y - 44);
   visualEvent('nova', P.x, P.y, 1.1, 3, 36); pickupSpark(P.x, P.y); spark(P.x, P.y, '#ffe9a8', 16);
@@ -450,7 +451,7 @@ function step() {
     if (P.boon.ray && (!isCreation || day >= 1) && fire(6)) for (let i = 0; i < P.boon.ray; i++) S(i ? 18 : -18, 0, 13, 1, 0);
   } else {
     P.idle++;
-    const maxHp = P.maxHp || 5;
+    const maxHp = P.maxHp || MAX_HP;
     if (!locked && P.idle > 90 && P.hp < maxHp && ++P.pray >= 180) { P.pray = 0; P.hp++; spark(P.x, P.y, '#ffe9a8', 24); msg('기도 응답', 60); }
   }
   P.fire = firing; if (P.inv > 0) P.inv--; if (P.upT > 0) P.upT--;
@@ -628,7 +629,7 @@ function step() {
     else { it.vy = Math.min(3, it.vy + 0.08); it.y += it.vy; }
     if (d < (it.type >= 2 ? 28 : 20)) {
       it.dead = 1;
-      const maxHp = P.maxHp || 5;
+      const maxHp = P.maxHp || MAX_HP;
       if (it.type === 1) {
         if (P.hp < maxHp) { P.hp++; msg('기도의 물약 · 생명 +1', 60); }
         else { addScore(1000); floatScore(P.x, P.y, 1000); msg('기도의 물약 · +1,000점', 60); }
@@ -641,8 +642,8 @@ function step() {
         else { addScore(3000); floatScore(P.x, P.y, 3000); P.flood = 360; msg(rv.n + (isEden ? ' 강이 넘친다' : ' 충만!'), 90); sfx('flood'); visualFlash = 0.4; }
         sfx('power');
         spark(P.x, P.y, '#9cf', 24); visualEvent('nova', P.x, P.y, 0.8, it.r % 4, 40);
-      } else if (it.type === 5) { // 생명나무: 최대 생명 +1(상한 6) 및 생명 전부 회복
-        P.maxHp = Math.min(6, (P.maxHp || 5) + 1);
+      } else if (it.type === 5) { // 생명나무: 최대 생명 +1(상한 MAX_HP+1) 및 생명 전부 회복
+        P.maxHp = Math.min(MAX_HP + 1, (P.maxHp || MAX_HP) + 1);
         P.hp = P.maxHp;
         addScore(5000); stats.tree = 1; msg('생명나무의 열매 · 최대 생명 +1', 110); sfx('rest'); floatScore(P.x, P.y, 5000); visualEvent('nova', P.x, P.y, 1.6, 1, 60);
       } else if (it.type === 4) {
@@ -654,7 +655,7 @@ function step() {
         }
         spark(P.x, P.y, '#ffe9a8', 24);
       } else if (it.type === 6) {
-        P.bombs = Math.min(7, P.bombs + 1);
+        P.bombs = Math.min(MAX_BOMBS, P.bombs + 1);
         shout('나팔 +1', P.x, P.y - 26);
         sfx('power');
         spark(P.x, P.y, '#ffe49e', 22);
@@ -1452,10 +1453,20 @@ function panel(x, y, w, h, opacity = 0.76) {
   g.strokeStyle = 'rgba(159,220,203,.16)'; g.lineWidth = 1; g.stroke();
 }
 
+let hudLastP = null, hudLastHp = 0, hudHpFlashT = 0, hudHpFlashDir = 0;
+
 function updateVisuals() {
   const now = typeof performance !== 'undefined' ? performance.now() : visualLast + 16.67;
   const dt = visualLast ? Math.min(2, Math.max(0, (now - visualLast) / 16.67)) : 1;
   visualLast = now; visualTime += dt; visualFlash = Math.max(0, visualFlash - dt * 0.045);
+  if (P !== hudLastP) {
+    hudLastP = P; hudLastHp = P ? P.hp : 0; hudHpFlashT = 0; hudHpFlashDir = 0;
+  } else if (P) {
+    if (P.hp < hudLastHp) { hudHpFlashDir = -1; hudHpFlashT = 26; }
+    else if (P.hp > hudLastHp) { hudHpFlashDir = 1; hudHpFlashT = 26; }
+    hudLastHp = P.hp;
+  }
+  if (hudHpFlashT > 0) hudHpFlashT = Math.max(0, hudHpFlashT - dt);
   for (const f of visuals) f.age += dt;
   visuals = visuals.filter(f => f.age < f.life);
   for (const f of leafTrail) f.age += dt;
@@ -1818,7 +1829,7 @@ function drawPlayer() {
     arc(P.x, P.y, 26, 'rgba(184,234,255,.28)', 1, visualTime * 0.02, visualTime * 0.02 + Math.PI);
     arc(P.x, P.y, 30, '#fff2ce', 2, -2.7, -1.8);
   }
-  const maxHp = P.maxHp || 5;
+  const maxHp = P.maxHp || MAX_HP;
   const locked = (isCreation && day === 7) || (stg && (typeof stg.weaponLocked === 'function' ? stg.weaponLocked() : stg.weaponLocked));
   if (!locked && P.idle > 90 && P.hp < maxHp) {
     const p = P.pray / 180;
@@ -1832,10 +1843,10 @@ function drawPlayer() {
   }
 }
 
-function heart(x, y, filled) {
-  g.fillStyle = filled ? '#ef8497' : '#293740'; g.beginPath(); g.moveTo(x, y + 6);
+function heart(x, y, filled, col) {
+  g.fillStyle = col || (filled ? '#ef8497' : '#293740'); g.beginPath(); g.moveTo(x, y + 6);
   g.bezierCurveTo(x - 14, y - 2, x - 6, y - 12, x, y - 6); g.bezierCurveTo(x + 6, y - 12, x + 14, y - 2, x, y + 6); g.fill();
-  if (filled) { g.fillStyle = '#ffd8d9'; g.beginPath(); g.ellipse(x - 4, y - 4, 2, 1.3, -0.6, 0, TAU); g.fill(); }
+  if (filled || col) { g.fillStyle = '#ffd8d9'; g.beginPath(); g.ellipse(x - 4, y - 4, 2, 1.3, -0.6, 0, TAU); g.fill(); }
 }
 function bombIcon(x, y, active) {
   g.strokeStyle = active ? '#e7c58e' : '#30404a'; g.fillStyle = active ? '#bda16e' : '#26343c'; g.lineWidth = 1;
@@ -1849,11 +1860,28 @@ function swordIcon(x, y, active) {
 
 function drawHUD() {
   const stg = curStage(), isCreation = stg && stg.id === 'creation', isEden = stg && stg.id === 'eden';
-  const maxHp = (P && P.maxHp) || 5;
-  panel(12, 12, 456, 59); text('생명', 24, 30, 10, '#88a7ac', 'left');
-  const hGap = maxHp > 5 ? 18 : 20;
-  for (let i = 0; i < maxHp; i++) heart(66 + i * hGap, 28, i < P.hp);
-  text('나팔', 24, 56, 10, '#88a7ac', 'left'); for (let i = 0; i < 7; i++) bombIcon(65 + i * 17, 52, i < P.bombs);
+  const maxHp = (P && P.maxHp) || MAX_HP;
+  const hpFl = hudHpFlashT > 0 ? Math.min(1, hudHpFlashT / 26) : 0;
+  const hpFlCol = hudHpFlashDir < 0 ? '#ff4d5e' : '#6bff95';
+  const hpFlRgb = hudHpFlashDir < 0 ? '255,77,94' : '107,255,149';
+  panel(12, 12, 456, 59);
+  if (hpFl > 0) {
+    g.fillStyle = `rgba(${hpFlRgb},${(0.26 * hpFl).toFixed(3)})`;
+    g.beginPath(); g.roundRect(18, 17, 194, 21, 5); g.fill();
+  }
+  text('생명', 22, 31, 10, hpFl > 0.2 ? hpFlCol : '#88a7ac', 'left');
+  heart(53, 28, P.hp > 0, hpFl > 0.2 ? hpFlCol : null);
+  text(P.hp + '/' + maxHp, 66, 31, 11, hpFl > 0.2 ? hpFlCol : (P.hp <= 1 ? '#ff8b97' : '#f3d8de'), 'left');
+  g.fillStyle = '#263c42'; g.fillRect(108, 25, 98, 5);
+  g.fillStyle = hpFl > 0.2 ? hpFlCol : '#ef8497';
+  g.fillRect(108, 25, 98 * Math.max(0, Math.min(1, P.hp / maxHp)), 5);
+
+  text('나팔', 22, 55, 10, '#88a7ac', 'left');
+  bombIcon(53, 52, P.bombs > 0);
+  text(P.bombs + '/' + MAX_BOMBS, 66, 55, 11, P.bombs > 0 ? '#fff1cd' : '#6c7f86', 'left');
+  g.fillStyle = '#263c42'; g.fillRect(108, 49, 98, 5);
+  g.fillStyle = '#e7c58e';
+  g.fillRect(108, 49, 98 * Math.max(0, Math.min(1, P.bombs / MAX_BOMBS)), 5);
   if (isCreation) {
     text(day ? ['', '첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째', '일곱째'][day] + ' 날' : '태초', 262, 31, 11, '#ffe9a8');
     for (let i = 0; i < 7; i++) circle(226 + i * 12, 51, 3.5, i < day ? (i < 3 ? '#9fd0ff' : i < 6 ? '#ffd76a' : '#ffffff') : '#2a3a42');
@@ -1887,7 +1915,7 @@ function drawHUD() {
   }
   if (state === 'play' || state === 'clearing' || state === 'pause') {
     const b = BTN.bomb; g.globalAlpha = P.bombs ? 0.92 : 0.35; circle(b.x, b.y, b.r, 'rgba(6,19,29,.72)'); arc(b.x, b.y, b.r, '#e7c58e', 2);
-    g.save(); g.translate(b.x - 3, b.y - 6); g.scale(2.4, 2.4); bombIcon(0, 0, P.bombs > 0); g.restore(); text(String(P.bombs), b.x + 15, b.y + 21, 13, '#fff1cd');
+    g.save(); g.translate(b.x - 2, b.y - 8); g.scale(2.2, 2.2); bombIcon(0, 0, P.bombs > 0); g.restore(); text(String(P.bombs), b.x, b.y + 22, 13, '#fff1cd');
     const sb = BTN.sword; g.globalAlpha = (P.bombs && swordT <= 0) ? 0.92 : (swordT > 0 ? 1 : 0.35);
     circle(sb.x, sb.y, sb.r, 'rgba(6,19,29,.72)');
     arc(sb.x, sb.y, sb.r, swordT > 0 ? '#ff7a33' : '#e7c58e', 2);
@@ -2450,7 +2478,7 @@ function drawMenu() {
   if (title) { blit(ART.light, 240, 216, 150); text('창조의 일곱 날', 240, 114, 12, '#94bdb8'); }
   else { text(rank(), 240, 242, 66, col); text('등급', 240, 180, 11, '#94b0b4'); }
   text(title ? '알파 · 오메가' : clear ? (stg && stg.clearTitle || '정원을 지나') : '쓰러졌다', 240, 342, title ? 38 : 36, col);
-  text(title ? '태초에서 에덴까지' : clear ? (stg && stg.name ? stg.name + ' 완료' : '첫 번째 여정 완료') : '다시 날아오를 시간', 240, 374, 13, '#94b0b4');
+  text(title ? '1장 태초' : clear ? (stg && stg.name ? stg.name + ' 완료' : '첫 번째 여정 완료') : '다시 날아오를 시간', 240, 374, 13, '#94b0b4');
 
   const topBest = Math.max(best, +SAVE.get('best', 0) || 0, +SAVE.get('best_eden', 0) || 0);
   if (title && topBest) text('최고 기록  ' + String(topBest).padStart(8, '0'), 240, 395, 11, '#e6d5ab');
@@ -2655,7 +2683,7 @@ STAGES.push({
       if (r >= 9.5) {
         const pct = Math.min(100, Math.round(restTicks / 570 * 100));
         const ratio = pct / 100;
-        const maxHp = P.maxHp || 5;
+        const maxHp = P.maxHp || MAX_HP;
         const bonusScore = Math.round(30000 * ratio / 10) * 10;
         const healHp = Math.round((maxHp - P.hp) * ratio);
         startEdenFromCreation(pct);
@@ -2664,7 +2692,7 @@ STAGES.push({
           floatScore(P.x, P.y - 30, bonusScore);
         }
         if (healHp > 0) P.hp = Math.min(maxHp, P.hp + healHp);
-        if (pct >= 100) P.bombs = Math.min(7, P.bombs + 1);
+        if (pct >= 100) P.bombs = Math.min(MAX_BOMBS, P.bombs + 1);
         if (pct > 0) { msg('쉼 ' + pct + '% · 에덴', 120); sfx('rest'); }
       }
     }
@@ -3354,7 +3382,7 @@ const CAIN_WAVES = [
     // 2막 끝 숨은 보상: 어린양을 한 번도 맞히지 않으면 "온유한 들판"(생명 +1, 5,000점)
     if (cainState && !cainState.lambHit && !cainState.gentleRewarded) {
       cainState.gentleRewarded = true;
-      const maxHp = P.maxHp || 5;
+      const maxHp = P.maxHp || MAX_HP;
       P.hp = Math.min(maxHp, P.hp + 1);
       addScore(5000);
       floatScore(P.x, P.y - 24, 5000);
@@ -4607,7 +4635,7 @@ STAGES.push({
           // 숨은 보상: 동물 쌍 4쌍 모두 모으면 "온전한 방주"(나팔 +2)
           if (floodState.pairsCount >= 4) {
             floodState.perfectArk = true;
-            P.bombs = Math.min(7, P.bombs + 2);
+            P.bombs = Math.min(MAX_BOMBS, P.bombs + 2);
             shout('온전한 방주 · 나팔 +2 · +' + pairBonus, W / 2, 240);
           } else {
             shout('노아의 번제 · 무지개 언약!', W / 2, 240);
@@ -5266,7 +5294,7 @@ function updateBabelBoss(b) {
       // 숨은 보상: 혼잡 중 피격 0이면 "흩어지지 않는 날개"(5,000점, 생명 +1)
       if (babelState.confusionHits === 0 && !babelState.wingRewarded) {
         babelState.wingRewarded = true;
-        const maxHp = P.maxHp || 4;
+        const maxHp = P.maxHp || (MAX_HP - 1);
         P.hp = Math.min(maxHp, P.hp + 1);
         addScore(5000);
         floatScore(P.x, P.y - 24, 5000);
@@ -5438,7 +5466,7 @@ STAGES.push({
     this.music.mode = 'minor';
     // 감람 잎 비둘기: 최대 생명 -1
     if (P) {
-      P.maxHp = Math.max(2, (P.maxHp || 5) - 1);
+      P.maxHp = Math.max(2, (P.maxHp || MAX_HP) - 1);
       P.hp = Math.min(P.hp, P.maxHp);
     }
   },
@@ -6880,7 +6908,7 @@ Object.assign(FOES, {
         haranState.wellX = e.x;
         haranState.wellY = e.y;
       }
-      const maxHp = (P && P.maxHp) || 5;
+      const maxHp = (P && P.maxHp) || MAX_HP;
       if (P) P.hp = Math.min(maxHp, P.hp + 1);
       river(e.x, e.y);
       if (haranState && !haranState.midTrumpet) { haranState.midTrumpet = true; dropTrumpet(e.x, e.y); }
@@ -7125,7 +7153,7 @@ const HARAN_WAVES = [
     bul = [];
     if (haranState && haranState.spottedCount >= 12 && !haranState.flockRewarded) {
       haranState.flockRewarded = true;
-      if (P) P.bombs = Math.min(7, P.bombs + 1);
+      if (P) P.bombs = Math.min(MAX_BOMBS, P.bombs + 1);
       addScore(5000);
       if (P) floatScore(P.x, P.y - 24, 5000);
       shout('얼룩 양 떼 · 나팔 +1 · +5,000', W / 2, 260);
@@ -7223,7 +7251,7 @@ function updateHaranBoss(b) {
       haranState.tornT = 1;
       if (haranState.spottedCount >= 12 && !haranState.flockRewarded) {
         haranState.flockRewarded = true;
-        if (P) P.bombs = Math.min(7, P.bombs + 1);
+        if (P) P.bombs = Math.min(MAX_BOMBS, P.bombs + 1);
         addScore(5000);
       }
     }
@@ -8298,7 +8326,7 @@ function updatePotipharBoss(b) {
       potipharState.cleanHandsRewarded = true;
       addScore(10000);
       if (P) {
-        const maxHp = P.maxHp || 5;
+        const maxHp = P.maxHp || MAX_HP;
         P.hp = Math.min(maxHp, P.hp + 1);
         floatScore(P.x, P.y - 26, 10000);
       }
@@ -9196,7 +9224,7 @@ Object.assign(FOES, {
         if (aliveCnt === 3) {
           addScore(6000);
           floatScore(e.x, e.y - 20, 6000);
-          if (P) P.hp = Math.min(P.maxHp || 5, P.hp + 1);
+          if (P) P.hp = Math.min(P.maxHp || MAX_HP, P.hp + 1);
           shout('광주리 셋을 모두 지켰다! (+6,000 · 생명 +1)', W / 2, 265);
           sfx('rest');
         } else if (aliveCnt > 0) {
@@ -10244,7 +10272,7 @@ if (typeof window !== 'undefined') {
         score,
         nextExtend,
         hp: P ? P.hp : 0,
-        maxHp: P ? (P.maxHp || 5) : 5,
+        maxHp: P ? (P.maxHp || MAX_HP) : MAX_HP,
         bombs: P ? P.bombs : 0,
         trumpets: stats ? (stats.trumpets || 0) : 0,
         w: P ? P.w : 0,
