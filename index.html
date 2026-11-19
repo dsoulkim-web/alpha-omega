@@ -2659,7 +2659,7 @@ STAGES.push({
       day = d; dayT = T; wi = 0; graceT = T; sfx('day'); visualFlash = 0.7; shake = 8; visualEvent('nova', W / 2, 200, 2.4, 3, 90);
       if (d === 5) P.pets.push({ k: 'eagle', x: P.x, y: P.y });
       if (d === 6) P.pets.push({ k: 'lion', x: P.x, y: P.y });
-      if (d === 2 || d === 4 || d === 6) dropTrumpet(W / 2, -20);
+      if (d === 3 || d === 6) dropTrumpet(W / 2, -20);
       if (d === 7) {
         rested = true; restTicks = 0;
         msg('손을 떼고 쉬어라', 180);
@@ -2985,7 +2985,7 @@ STAGES.push({
       items = items.filter(i => i.type !== 4 && i.type !== 5); cancelAll(); P.flood = 0; graceT = T; sfx('fall');
       if (!edenMidTrumpet) { edenMidTrumpet = true; dropTrumpet(W / 2, -20); }
     }
-    if (fallen && !P.clothed && T >= fallT + 130) { P.clothed = 1; P.armor = 1; msg('잎새 → 가죽옷', 130); spark(P.x, P.y, '#c96', 40); dropTrumpet(W / 2, -20); }
+    if (fallen && !P.clothed && T >= fallT + 130) { P.clothed = 1; P.armor = 1; msg('잎새 → 가죽옷', 130); spark(P.x, P.y, '#c96', 40); }
     if (P.clothed && !P.armor && ++P.armorT >= 900) { P.armor = 1; P.armorT = 0; spark(P.x, P.y, '#c96', 16); }
   },
   boss: {
@@ -3417,7 +3417,6 @@ const CAIN_WAVES = [
   [95, () => {
     if (cainState) cainState.wandering = true;
     msg('3막 · 떠도는 땅', 130);
-    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => { spawnWanderShadows(1, 4); thorns(3); }],
   [100, () => { spawnWanderShadows(0, 4); spawnRedEyes([120, 360]); }],
@@ -4189,7 +4188,7 @@ const FLOOD_WAVES = [
   }],
 
   // ⑤ 3막 "사십 날의 비" 시작 (95초)
-  [95, () => { msg('3막 · 사십 날의 비', 120); dropTrumpet(W / 2, -20); }],
+  [95, () => msg('3막 · 사십 날의 비', 120)],
 ];
 
 // 40개의 짧은 웨이브를 1.2초 간격으로 추가 (95.0 ~ 141.8초)
@@ -5027,7 +5026,6 @@ const BABEL_WAVES = [
       babelState.floorTimer = 0;
     }
     msg('3막 · 탑을 오르다', 120);
-    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => { spawnTowerTurretPair(); spawnFallingBrick(200, 340); }],
   [100, () => { spawnBrickLine(1, 130, 5); spawnTowerTurretPair(); }],
@@ -6398,7 +6396,6 @@ STAGES.push({
         sodomState.phaseT = 0;
         msg('3막 · 유황불', 130);
         sfx('flood');
-        dropTrumpet(W / 2, -20);
       }
     }
 
@@ -7104,7 +7101,6 @@ const HARAN_WAVES = [
     if (haranState) haranState.act = 5;
     msg('3막 · 도주 (아래에서 추격대가 올라온다!)', 130);
     sfx('warn');
-    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => {
     spawnPursuerWave([110, 240, 370]);
@@ -8202,7 +8198,6 @@ const POTIPHAR_WAVES = [
   [95, () => {
     if (potipharState) potipharState.act = 5;
     msg('3막 · 저택 복도', 120);
-    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => { spawnServantLine(1, 120, 5, 0); spawnTorchBearers([140, 340]); }],
   [100.5, () => { spawnCurtainBarrage(240, 1, 0); spawnServantLine(0, 150, 5, 1); }],
@@ -9442,7 +9437,6 @@ const DREAM_WAVES = [
       dreamState.prisonDoorOpenT = 0;
     }
     msg('3막 · 나일 강가의 꿈 (살진 암소 일곱을 곡창에 들여라)', 140);
-    dropTrumpet(W / 2, -20);
   }],
   [97, () => { spawnFatCow(1, true, 320); spawnEastWind(250, -1, 200, true); }],
   [103, () => { spawnFatCow(2, false, 420); spawnDreamShadows([140, 340], 1); }],
