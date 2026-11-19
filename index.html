@@ -152,10 +152,10 @@ function startStage(idx, keep) {
     combo = 0; comboT = 0; maxCombo = 0; newBest = false;
     score = 0; graze = 0; glory = 0; burst = 0; invert = 0; nextExtend = 50000;
     P = { x: W / 2, y: H - 120, hp: 3, maxHp: 5, bombs: 3, inv: 0, armor: 0, armorT: 0, clothed: 0, pray: 0, idle: 0, w: 0, lv: 1, pets: [], boon: {}, flood: 0, upT: 0 };
-    stats = { hits: 0, bombs: 0, fruit: 0, perfect: 0, tree: 0, rest: -1, pickups: 0 };
+    stats = { hits: 0, bombs: 0, fruit: 0, perfect: 0, tree: 0, rest: -1, pickups: 0, trumpets: 0 };
   } else {
     P.w = 0; P.lv = 1; P.flood = 0; P.clothed = 0; P.armor = 0; P.armorT = 0; P.pets = [];
-    stats.hits = 0; stats.fruit = 0; stats.tree = 0; stats.pickups = 0;
+    stats.hits = 0; stats.fruit = 0; stats.tree = 0; stats.pickups = 0; stats.trumpets = 0;
   }
   day = 0; dayT = 0; made = []; rested = true; restTicks = 0;
   graceT = 0; slow = 0; blessings = [];
@@ -248,6 +248,12 @@ function cancelAll() { for (const b of bul) gem(b.x, b.y); bul = []; }
 function river(x, y) {
   if (items.some(i => i.type === 2)) return;
   items.push({ x, y, vx: Math.random() < 0.5 ? 1.2 : -1.2, vy: 1.1, type: 2, r: 1 + (Math.random() * 4 | 0), t: 0 });
+}
+function dropTrumpet(x, y) {
+  const tx = Math.max(36, Math.min(W - 36, x !== undefined ? x : W / 2));
+  const ty = y !== undefined ? y : -20;
+  items.push({ x: tx, y: ty, type: 6, t: 0 });
+  stats.trumpets = (stats.trumpets || 0) + 1;
 }
 
 function foe(type, x, y, hp, o) {
@@ -613,6 +619,12 @@ function step() {
       if (it.t % 100 === 0) it.r = it.r % 4 + 1;
     } else if (it.type === 4) { it.y += 1.1; it.x += Math.sin(it.t * 0.04) * 1.2; }
     else if (it.type === 5) it.y += 1.3;
+    else if (it.type === 6) {
+      it.y += 1.05;
+      if (d > 1) { it.x += (P.x - it.x) / d * 0.9; it.y += (P.y - it.y) / d * 0.55; }
+      it.x = Math.max(24, Math.min(W - 24, it.x));
+      if (it.y > H - 72) it.y = H - 72;
+    }
     else { it.vy = Math.min(3, it.vy + 0.08); it.y += it.vy; }
     if (d < (it.type >= 2 ? 28 : 20)) {
       it.dead = 1;
@@ -641,6 +653,12 @@ function step() {
           msg(PETS[it.pet] + '라 이름 지었다', 90);
         }
         spark(P.x, P.y, '#ffe9a8', 24);
+      } else if (it.type === 6) {
+        P.bombs = Math.min(7, P.bombs + 1);
+        shout('나팔 +1', P.x, P.y - 26);
+        sfx('power');
+        spark(P.x, P.y, '#ffe49e', 22);
+        visualEvent('nova', P.x, P.y, 0.9, 3, 36);
       } else if (gemPenalty) {
         score = Math.max(0, score - 250);
         floatScore(P.x, P.y, -250);
@@ -654,7 +672,7 @@ function step() {
       }
     }
   }
-  items = items.filter(i => !i.dead && i.y < H + 40);
+  items = items.filter(i => !i.dead && (i.type === 6 || i.y < H + 40));
 
   let exp = 0;
   for (const o of blessings) {
@@ -1555,6 +1573,32 @@ function drawProjectiles() {
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       drawPet(it.pet, it.x, it.y, 46);
       text(it.label || '닿아서 이름 짓기', it.x, it.y + 38, 10, '#fff1cd');
+    } else if (it.type === 6) {
+      const pulse = 1 + Math.sin(visualTime * 0.16 + it.t * 0.08) * 0.1;
+      const bob = Math.sin(visualTime * 0.1 + it.t * 0.05) * 2.5;
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = 0.45 + Math.sin(visualTime * 0.2) * 0.2;
+      blit(ART.glows[3], it.x, it.y + bob, 84 * pulse);
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+      g.translate(it.x, it.y + bob);
+      g.scale(2.4 * pulse, 2.4 * pulse);
+      g.strokeStyle = '#fff3b8';
+      g.fillStyle = '#f2c85b';
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(-5, 3); g.lineTo(1, -3); g.lineTo(6, -6);
+      g.lineTo(8, 2); g.lineTo(2, 2); g.lineTo(-3, 7);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = 0.65 + Math.sin(visualTime * 0.28 + it.t * 0.1) * 0.35;
+      blit(ART.spark, 5, -3, 12);
+      blit(ART.white, -1, 1, 7);
+      g.restore();
+      text('나팔', it.x, it.y + 34, 10, '#ffe9a8');
     } else {
       const tw = 1 + Math.sin(visualTime * 0.25 + it.x * 0.3) * 0.14;
       const pkIm = typeof getPickupSprite === 'function' ? getPickupSprite(it.hue) : ART.gems[((it.hue || 0) / 30 | 0) % 12];
@@ -2587,6 +2631,7 @@ STAGES.push({
       day = d; dayT = T; wi = 0; graceT = T; sfx('day'); visualFlash = 0.7; shake = 8; visualEvent('nova', W / 2, 200, 2.4, 3, 90);
       if (d === 5) P.pets.push({ k: 'eagle', x: P.x, y: P.y });
       if (d === 6) P.pets.push({ k: 'lion', x: P.x, y: P.y });
+      if (d === 2 || d === 4 || d === 6) dropTrumpet(W / 2, -20);
       if (d === 7) {
         rested = true; restTicks = 0;
         msg('손을 떼고 쉬어라', 180);
@@ -2647,6 +2692,7 @@ STAGES.push({
 // ── src/stages/s01_eden.js ──
 // ── 1-1 에덴 (동산 → 유혹 → 저주받은 땅 → 옛 뱀) ──────────
 const FALL = 39 * 60;
+let edenMidTrumpet = false;
 
 // 에덴 적들을 FOES 표에 등록
 Object.assign(FOES, {
@@ -2710,7 +2756,10 @@ Object.assign(FOES, {
       if (e.t % 150 === 100) { const a = aim(e.x, e.y); for (let i = -1; i <= 1; i++) shoot(e.x, e.y, a + i * 0.2, 3, 0, 2); }
       if (e.t % 150 === 30) shoot(e.x, e.y, aim(e.x, e.y), 2.4, 1);
     },
-    onKill(e) { river(e.x, e.y); shout('뱀의 그림자를 물리쳤다', W / 2, 300); }
+    onKill(e) {
+      river(e.x, e.y); shout('뱀의 그림자를 물리쳤다', W / 2, 300);
+      if (!edenMidTrumpet) { edenMidTrumpet = true; dropTrumpet(e.x, e.y); }
+    }
   }
 });
 
@@ -2742,7 +2791,7 @@ const EDEN_WAVES = [
   [43, () => msg('3막 · 저주받은 땅', 130)], [44, () => thorns(3)], [46, () => thorns(3)], [47, () => thistle(240)],
   [49.5, hedge], [51.5, () => dust(240)], [53.5, () => thorns(4)], [55.5, () => { thistle(120); thistle(360); }],
   [58.5, hedge], [60, () => { dust(140); dust(340); }], [62, () => thorns(4)], [64, () => { thistle(240); snakeChain(240, 160); }],
-  [67, () => { hedge(); thorns(3); }], [69, () => { dust(240); thistle(100); }], [71.5, () => thorns(5)], [73.5, () => river(240, -20)],
+  [67, () => { hedge(); thorns(3); }], [69, () => { dust(240); thistle(100); }], [71.5, () => thorns(5)], [73.5, () => { river(240, -20); dropTrumpet(W / 2 + 50, -20); }],
 ];
 
 function drawEdenBg() {
@@ -2897,6 +2946,7 @@ STAGES.push({
   start() {
     reached = true;
     fallen = false; fallT = 0; P.clothed = 0; P.armor = 0; P.armorT = 0;
+    edenMidTrumpet = false;
   },
   waves: EDEN_WAVES,
   update() {
@@ -2905,8 +2955,9 @@ STAGES.push({
       P.pets.forEach((p, i) => fled.push({ k: p.k, x: p.x, y: p.y, vx: i ? 4 : -4, vy: -1.5, life: 110 })); P.pets = [];
       for (const e of ene) if (e.type === 'whisper' || e.type === 'fruit' || e.type === 'shadow') { e.hp = 0; spark(e.x, e.y, '#c9f', 6); }
       items = items.filter(i => i.type !== 4 && i.type !== 5); cancelAll(); P.flood = 0; graceT = T; sfx('fall');
+      if (!edenMidTrumpet) { edenMidTrumpet = true; dropTrumpet(W / 2, -20); }
     }
-    if (fallen && !P.clothed && T >= fallT + 130) { P.clothed = 1; P.armor = 1; msg('잎새 → 가죽옷', 130); spark(P.x, P.y, '#c96', 40); }
+    if (fallen && !P.clothed && T >= fallT + 130) { P.clothed = 1; P.armor = 1; msg('잎새 → 가죽옷', 130); spark(P.x, P.y, '#c96', 40); dropTrumpet(W / 2, -20); }
     if (P.clothed && !P.armor && ++P.armorT >= 900) { P.armor = 1; P.armorT = 0; spark(P.x, P.y, '#c96', 16); }
   },
   boss: {
@@ -2959,6 +3010,7 @@ function initCainState() {
     wandering: false,
     vineLeft: 0,
     vineRight: 0,
+    midTrumpet: false,
   };
 }
 
@@ -3170,6 +3222,7 @@ Object.assign(FOES, {
       } else {
         shout('끓는 분노가 흩어졌다', W / 2, 290);
       }
+      if (cainState && !cainState.midTrumpet) { cainState.midTrumpet = true; dropTrumpet(e.x, e.y); }
     },
     draw(e, flash) {
       const gr = e.grow || 1, radSize = 34 * gr;
@@ -3329,12 +3382,14 @@ const CAIN_WAVES = [
     sfx('fall');
     const stg = curStage();
     if (stg && stg.music) stg.music.mode = 'minor';
+    if (cainState && !cainState.midTrumpet) { cainState.midTrumpet = true; dropTrumpet(W / 2, -20); }
   }],
 
   // ⑤ 3막 "떠도는 땅" 약 50초 (95~145초)
   [95, () => {
     if (cainState) cainState.wandering = true;
     msg('3막 · 떠도는 땅', 130);
+    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => { spawnWanderShadows(1, 4); thorns(3); }],
   [100, () => { spawnWanderShadows(0, 4); spawnRedEyes([120, 360]); }],
@@ -3356,6 +3411,7 @@ const CAIN_WAVES = [
     msg('숨 고르기 · 들판의 샘', 110);
     river(W / 2 - 50, -20);
     items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+    dropTrumpet(W / 2, -20);
   }],
 ];
 
@@ -3832,6 +3888,7 @@ function initFloodState() {
     rainbowT: 0,
     rainbowY: H + 40,
     perfectArk: false,
+    midTrumpet: false,
   };
 }
 
@@ -3987,6 +4044,7 @@ Object.assign(FOES, {
     onKill(e) {
       river(e.x, e.y);
       shout('네피림 선봉을 물리쳤다', W / 2, 290);
+      if (floodState && !floodState.midTrumpet) { floodState.midTrumpet = true; dropTrumpet(e.x, e.y); }
     },
     draw(e, flash) {
       // 주먹 내려찍기 예고 및 주먹
@@ -4095,6 +4153,7 @@ const FLOOD_WAVES = [
     visualFlash = 0.5;
     sfx('big');
     msg('문이 닫힌다', 150);
+    if (floodState && !floodState.midTrumpet) { floodState.midTrumpet = true; dropTrumpet(W / 2, -20); }
   }],
   [89, () => {
     sfx('flood');
@@ -4102,7 +4161,7 @@ const FLOOD_WAVES = [
   }],
 
   // ⑤ 3막 "사십 날의 비" 시작 (95초)
-  [95, () => msg('3막 · 사십 날의 비', 120)],
+  [95, () => { msg('3막 · 사십 날의 비', 120); dropTrumpet(W / 2, -20); }],
 ];
 
 // 40개의 짧은 웨이브를 1.2초 간격으로 추가 (95.0 ~ 141.8초)
@@ -4137,6 +4196,7 @@ FLOOD_WAVES.push([145, () => {
   msg('숨 고르기 · 떠내려온 궤', 110);
   river(W / 2 - 50, -20);
   items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+  dropTrumpet(W / 2, -20);
 }]);
 
 function drawFloodBg() {
@@ -4639,6 +4699,7 @@ function initBabelState() {
     collapsing: false,    // 보스 격파 후 탑 붕괴 연출
     collapseT: 0,
     people: [],           // 사방으로 흩어지는 사람 실루엣
+    midTrumpet: false,
   };
 }
 
@@ -4817,6 +4878,7 @@ Object.assign(FOES, {
     onKill(e) {
       river(e.x, e.y);
       shout('벽돌 가마가 무너졌다', W / 2, 285);
+      if (babelState && !babelState.midTrumpet) { babelState.midTrumpet = true; dropTrumpet(e.x, e.y); }
     },
     draw(e) {
       g.save();
@@ -4925,6 +4987,7 @@ const BABEL_WAVES = [
     shake = 14;
     sfx('day');
     msg('탑이 구름을 뚫다', 150);
+    if (babelState && !babelState.midTrumpet) { babelState.midTrumpet = true; dropTrumpet(W / 2, -20); }
   }],
   [89.5, () => msg('꼭대기가 하늘에 닿으려 한다', 120)],
 
@@ -4936,6 +4999,7 @@ const BABEL_WAVES = [
       babelState.floorTimer = 0;
     }
     msg('3막 · 탑을 오르다', 120);
+    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => { spawnTowerTurretPair(); spawnFallingBrick(200, 340); }],
   [100, () => { spawnBrickLine(1, 130, 5); spawnTowerTurretPair(); }],
@@ -4960,6 +5024,7 @@ const BABEL_WAVES = [
     msg('숨 고르기 · 흩어진 깃털', 110);
     river(W / 2 - 50, -20);
     items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+    dropTrumpet(W / 2, -20);
   }],
 ];
 
@@ -5509,6 +5574,7 @@ function initSodomState() {
     ramY: 165,
     thickets: [],         // 숫양 둘레 가시덤불
     freedT: 0,
+    midTrumpet: false,
   };
   // 318명의 아군을 뜻하는 하단 빛 점들
   for (let i = 0; i < 24; i++) {
@@ -5883,6 +5949,7 @@ function updateSodomBoss(b) {
     b.flee = 1;
     b.atk = null;
     river(b.x, b.y + 20);
+    if (sodomState && !sodomState.midTrumpet) { sodomState.midTrumpet = true; dropTrumpet(b.x, b.y); }
     shout('네 왕 연합군을 모두 물리쳤다!', W / 2, 270);
     sfx('big');
   }
@@ -6303,6 +6370,7 @@ STAGES.push({
         sodomState.phaseT = 0;
         msg('3막 · 유황불', 130);
         sfx('flood');
+        dropTrumpet(W / 2, -20);
       }
     }
 
@@ -6384,6 +6452,7 @@ STAGES.push({
         msg('소알에 닿다 · 떨어진 별', 120);
         river(W / 2 - 50, -20);
         items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+        dropTrumpet(W / 2, -20);
       }
     }
 
@@ -6575,6 +6644,7 @@ function initHaranState() {
     bgDir: 1,                // 배경 흐름 방향 (1: 기본, -1: 조항 5 반대 흐름)
     bgOffset: 0,
     tornT: 0,                // 계약서 찢어지는 연출 타이머
+    midTrumpet: false,
   };
 }
 
@@ -6813,6 +6883,7 @@ Object.assign(FOES, {
       const maxHp = (P && P.maxHp) || 5;
       if (P) P.hp = Math.min(maxHp, P.hp + 1);
       river(e.x, e.y);
+      if (haranState && !haranState.midTrumpet) { haranState.midTrumpet = true; dropTrumpet(e.x, e.y); }
       sfx('flood');
       visualEvent('nova', e.x, e.y, 1.8, 1, 60);
       shout('우물이 열렸다! 물이 솟아 생명 +1', W / 2, 265);
@@ -6991,6 +7062,7 @@ const HARAN_WAVES = [
     shake = 12;
     sfx('phase');
     msg('품삯이 바뀌었다! (이제 흰 양이 500점)', 160);
+    if (haranState && !haranState.midTrumpet) { haranState.midTrumpet = true; dropTrumpet(W / 2, -20); }
   }],
   [88.5, () => {
     spawnSheepWave([{ x: 100, spotted: false }, { x: 190, spotted: true }, { x: 290, spotted: false }, { x: 380, spotted: false }]);
@@ -7004,6 +7076,7 @@ const HARAN_WAVES = [
     if (haranState) haranState.act = 5;
     msg('3막 · 도주 (아래에서 추격대가 올라온다!)', 130);
     sfx('warn');
+    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => {
     spawnPursuerWave([110, 240, 370]);
@@ -7061,6 +7134,7 @@ const HARAN_WAVES = [
     msg('숨 고르기 · 열린 우물', 110);
     river(W / 2 - 50, -20);
     items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+    dropTrumpet(W / 2, -20);
   }],
 ];
 
@@ -7784,6 +7858,7 @@ function initPotipharState() {
     leftCoatX: W / 2,       // 남겨진 채색옷 위치
     leftCoatY: 220,
     caravan: [],            // 중간 보스 "대상 행렬" 낙타 배열
+    midTrumpet: false,
   };
 }
 
@@ -7880,6 +7955,7 @@ Object.assign(FOES, {
         potipharState.caravan[0].isHead = true;
       } else {
         river(e.x, e.y);
+        if (!potipharState.midTrumpet) { potipharState.midTrumpet = true; dropTrumpet(e.x, e.y); }
         shout('대상 행렬을 돌파했다!', W / 2, 280);
       }
     },
@@ -8091,12 +8167,14 @@ const POTIPHAR_WAVES = [
     visualFlash = 0.5;
     sfx('day');
     msg('애굽의 저택 · 맡은 일 세 가지를 거두어라', 150);
+    if (potipharState && !potipharState.midTrumpet) { potipharState.midTrumpet = true; dropTrumpet(W / 2, -20); }
   }],
 
   // ⑤ 3막 "저택 복도" (95~145초): 커튼 탄막, 횃불지기, 저택 하인 그림자
   [95, () => {
     if (potipharState) potipharState.act = 5;
     msg('3막 · 저택 복도', 120);
+    dropTrumpet(W / 2, -20);
   }],
   [96.5, () => { spawnServantLine(1, 120, 5, 0); spawnTorchBearers([140, 340]); }],
   [100.5, () => { spawnCurtainBarrage(240, 1, 0); spawnServantLine(0, 150, 5, 1); }],
@@ -8117,6 +8195,7 @@ const POTIPHAR_WAVES = [
     msg('숨 고르기 · 실타래', 110);
     river(W / 2 - 50, -20);
     items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+    dropTrumpet(W / 2, -20);
   }],
 ];
 
@@ -8898,6 +8977,7 @@ function initDreamState() {
     bossCharges: [],         // 보스 1단계 돌진 중인 머리 [{headIdx, x1, y1, x2, y2, t, cIdx}]
     harvestRain: false,      // 보스 격파 후 곡창 개방 & 10초(600프레임) 곡식/열매 비
     harvestT: 0,
+    midTrumpet: false,
   };
 }
 
@@ -9108,6 +9188,7 @@ Object.assign(FOES, {
     },
     onKill(e) {
       river(e.x, e.y);
+      if (dreamState && !dreamState.midTrumpet) { dreamState.midTrumpet = true; dropTrumpet(e.x, e.y); }
       if (dreamState && dreamState.basketsActive && !dreamState.basketsBonusAwarded) {
         dreamState.basketsBonusAwarded = true;
         const aliveCnt = dreamState.baskets.filter(b => b.alive).length;
@@ -9323,6 +9404,7 @@ const DREAM_WAVES = [
     visualFlash = 0.75;
     sfx('day');
     msg('두 해 뒤, 부름 · 감옥 문이 열리고 빛이 비친다', 160);
+    if (dreamState && !dreamState.midTrumpet) { dreamState.midTrumpet = true; dropTrumpet(W / 2, -20); }
   }],
 
   // ⑤ 3막 "나일 강가의 꿈" (95~145초): 살진 암소 7마리 + 마른 이삭 + 동풍
@@ -9332,6 +9414,7 @@ const DREAM_WAVES = [
       dreamState.prisonDoorOpenT = 0;
     }
     msg('3막 · 나일 강가의 꿈 (살진 암소 일곱을 곡창에 들여라)', 140);
+    dropTrumpet(W / 2, -20);
   }],
   [97, () => { spawnFatCow(1, true, 320); spawnEastWind(250, -1, 200, true); }],
   [103, () => { spawnFatCow(2, false, 420); spawnDreamShadows([140, 340], 1); }],
@@ -9353,6 +9436,7 @@ const DREAM_WAVES = [
     msg('숨 고르기 · 열린 곡창', 110);
     river(W / 2 - 50, -20);
     items.push({ x: W / 2 + 50, y: -20, vy: 1.2, type: 1 });
+    dropTrumpet(W / 2, -20);
   }],
 ];
 
@@ -10162,6 +10246,7 @@ if (typeof window !== 'undefined') {
         hp: P ? P.hp : 0,
         maxHp: P ? (P.maxHp || 5) : 5,
         bombs: P ? P.bombs : 0,
+        trumpets: stats ? (stats.trumpets || 0) : 0,
         w: P ? P.w : 0,
         lv: P ? P.lv : 1,
         swordT,
